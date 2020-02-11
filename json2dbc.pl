@@ -17,7 +17,6 @@ my $in = decode_json($jsontxt);
 #
 
 my $values = '';
-my $cycletimes = '';
 
 #Prefix
 print 'VERSION ""
@@ -60,12 +59,10 @@ BU_: Receiver ChassisBus VehicleBus PartyBus
 ';
 my $i = 0;
 for my $msgname (sort keys %{$in->{messages}}) {
-	#next if $msgname ne 'VCFRONT_status';
 	$i++;
-	#next if $i > 144;
 	
 	#ignore broken ones
-	next if $msgname =~ /^(GTW_hrl|EPAS3S_sysStatus|ODIN_IsoTpPipeVCSEC|.*_udsResponse|DAS_telemetryRadar|EPAS3P_sysStatus|ESP_info|GTW_adc.*|GTW_status|GTW_updateStatus|SCCM_info|UDS_.*Request|UI_IsoTpUDPPipeVCSEC)$/;
+	next if $msgname =~ /^(GTW_hrl|EPAS3S_sysStatus|OD.N_IsoTpPipeVCS.C|.*_udsResponse|DAS_telem.tryRadar|EPAS3P_sysStatus|ESP_info|GTW_adc.*|GTW_status|GTW_updateStatus|SCCM_info|UDS_.*Request|UI_IsoTpUDPPipeVCS.C)$/;
 	my $d = $in->{messages}->{$msgname};
 	#print "Found message $msgname\n";
 	#print Dumper($d);
@@ -96,17 +93,15 @@ for my $msgname (sort keys %{$in->{messages}}) {
 				} keys %{$d->{signals}}) {
 		my $s = $d->{signals}->{$signame};
 		#print Dumper($s);
-		#Skip signals too long for cantools do decode.
-		if ($s->{width} >32) {
-			print STDERR "$msgname $signame width ".$s->{width}." exceeds limit\n";
-			next;
-		}
-		my $valid = 1;
+		
+		# Some weird signals starting at 7 with width=64.
+		$s->{start_position} = 0 if $s->{width} == 64;
+
+		#Message is muxed, signal is not
 		if (($s->{mux_id} eq '') && ($muxname ne '') && ($muxname ne $signame)) {
 			print STDERR "-- ! $msgname $signame mux is null\n";
 			next;
 		}
-		next if $valid == 0;
 
 		my $endianess = ($s->{endianess} eq 'LITTLE') ? 0 : 1;
 		my $sign = ($s->{signedness} eq 'UNSIGNED') ? '+' : '-';
@@ -133,12 +128,9 @@ for my $msgname (sort keys %{$in->{messages}}) {
 		}
 
 	}
-	#Cycle times
-        $cycletimes .= 'BA_ "GenMsgCycleTime" BO_ '.$mid.' '.$d->{cycle_time}.";\n";
 
 	print "\n";
 
 
 }
-#print $cycletimes;
 print $values;
